@@ -9,24 +9,28 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// User はデータベースの users テーブルのレコードを表す構造体です。
 type User struct {
-	ID        int
-	UUID      string
-	Name      string
-	Email     string
-	Password  string
-	CreatedAt time.Time
-	Todos     []Todo
+	ID        int       // ユーザーの一意なID
+	UUID      string    // セキュリティや外部参照用のUUID
+	Name      string    // ユーザー名
+	Email     string    // Eメールアドレス (ログインに使用)
+	Password  string    // ハッシュ化されたパスワード
+	CreatedAt time.Time // 作成日時
+	Todos     []Todo    // ユーザーに紐づくTODOリストのキャッシュ
 }
 
+// Session はデータベースの sessions テーブルのレコードを表し、ログイン状態を管理します。
 type Session struct {
-	ID        int
-	UUID      string
-	Email     string
-	UserID    int
-	CreatedAt time.Time
+	ID        int       // セッションの一意なID
+	UUID      string    // クッキーとしてブラウザに保存されるUUID
+	Email     string    // セッションに紐づくユーザーのEメール
+	UserID    int       // セッションに紐づくユーザーID
+	CreatedAt time.Time // セッション作成日時
 }
 
+// CreateUser は新しいユーザーをデータベースに登録します。
+// パスワードは保存前にbcryptでハッシュ化されます。
 func (u *User) CreateUser(ctx context.Context, db *sql.DB) (err error) {
 	cmd := `INSERT INTO users(
 		uuid,
@@ -56,6 +60,7 @@ func (u *User) CreateUser(ctx context.Context, db *sql.DB) (err error) {
 	return err
 }
 
+// GetUser は指定されたIDのユーザーをデータベースから取得します。
 func GetUser(ctx context.Context, db *sql.DB, id int) (user User, err error) {
 	user = User{}
 	cmd := `SELECT id,uuid, name, email, password, created_at FROM users WHERE id = ?`
@@ -70,6 +75,7 @@ func GetUser(ctx context.Context, db *sql.DB, id int) (user User, err error) {
 	return user, err
 }
 
+// UpdateUser はユーザー情報(名前とEメール)を更新します。
 func (u *User) UpdateUser(ctx context.Context, db *sql.DB) (err error) {
 	cmd := `UPDATE users SET name = ?, email = ? WHERE id = ?`
 	_, err = db.ExecContext(ctx, cmd, u.Name, u.Email, u.ID)
@@ -79,6 +85,7 @@ func (u *User) UpdateUser(ctx context.Context, db *sql.DB) (err error) {
 	return err
 }
 
+// DeleteUser はユーザーをデータベースから削除します。
 func (u *User) DeleteUser(ctx context.Context, db *sql.DB) (err error) {
 	cmd := `DELETE FROM users WHERE id = ?`
 	_, err = db.ExecContext(ctx, cmd, u.ID)
@@ -106,6 +113,7 @@ func GetUserByEmail(ctx context.Context, db *sql.DB, email string) (user User, e
 	return user, err
 }
 
+// CreateSession はログインに成功したユーザーのために新しいセッションを発行してデータベースに保存します。
 func (u *User) CreateSession(ctx context.Context, db *sql.DB) (session Session, err error) {
 	session = Session{}
 	cmd1 := `INSERT INTO sessions (uuid, email, user_id, created_at) VALUES (?, ?, ?, ?)`
@@ -152,6 +160,7 @@ func (s *Session) CheckSession(ctx context.Context, db *sql.DB) (valid bool, err
 	return valid, err
 }
 
+// DeleteSessionByUUID は指定されたUUIDのセッションをデータベースから削除します（ログアウト処理）。
 func (s *Session) DeleteSessionByUUID(ctx context.Context, db *sql.DB) (err error) {
 	cmd := `DELETE FROM sessions WHERE uuid = ?`
 	_, err = db.ExecContext(ctx, cmd, s.UUID)
@@ -162,6 +171,7 @@ func (s *Session) DeleteSessionByUUID(ctx context.Context, db *sql.DB) (err erro
 	return nil
 }
 
+// GetUserBySession はセッション情報から紐づくユーザー情報を取得します。
 func (s *Session) GetUserBySession(ctx context.Context, db *sql.DB) (user User, err error) {
 	user = User{}
 	cmd := `SELECT id, uuid, name, email, created_at FROM users WHERE id = ?`
