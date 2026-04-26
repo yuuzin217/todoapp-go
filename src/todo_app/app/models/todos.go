@@ -16,7 +16,7 @@ func (u *User) CreateTodo(content string) (err error) {
 	cmd := `INSERT INTO todos (content, user_id, created_at) VALUES (?, ?, ?)`
 	_, err = DB.Exec(cmd, content, u.ID, time.Now())
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 	return err
 }
@@ -41,7 +41,8 @@ func GetTodos() (todos []Todo, err error) {
 	cmd := `SELECT id, content, user_id, created_at FROM todos`
 	rows, err := DB.Query(cmd)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -53,7 +54,8 @@ func GetTodos() (todos []Todo, err error) {
 			&todo.UserID,
 			&todo.CreatedAt,
 		); err != nil {
-			log.Fatalln(err)
+			log.Println(err)
+			return nil, err
 		}
 		todos = append(todos, todo)
 	}
@@ -65,7 +67,8 @@ func (u *User) GetTodosByUser() (todos []Todo, err error) {
 	cmd := `SELECT id, content, user_id, created_at FROM todos WHERE user_id = ?`
 	rows, err := DB.Query(cmd, u.ID)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
+		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -76,7 +79,8 @@ func (u *User) GetTodosByUser() (todos []Todo, err error) {
 			&todo.UserID,
 			&todo.CreatedAt,
 		); err != nil {
-			log.Fatalln(err)
+			log.Println(err)
+			return nil, err
 		}
 		todos = append(todos, todo)
 	}
@@ -88,7 +92,7 @@ func (t *Todo) UpdateTodo() error {
 	cmd := `UPDATE todos SET content = ?, user_id = ? WHERE id = ?`
 	_, err = DB.Exec(cmd, t.Content, t.UserID, t.ID)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 	return err
 }
@@ -97,7 +101,7 @@ func (t *Todo) DeleteTodo() error {
 	cmd := `DELETE FROM todos WHERE id = ?`
 	_, err = DB.Exec(cmd, t.ID)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 	return err
 }
