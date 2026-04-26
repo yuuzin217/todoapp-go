@@ -9,7 +9,7 @@ import (
 )
 
 /*
-signup は ユーザー登録を行います。
+signup は 新規ユーザー登録フォームの表示(GET)と、フォームデータの処理(POST)を行います。
 */
 func signup(env *Env, w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
@@ -43,7 +43,8 @@ func signup(env *Env, w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-login は ログイン処理を行うハンドラーです。
+login は ログインフォームを表示するハンドラーです。
+すでにセッションが存在する場合はTODO一覧へリダイレクトします。
 */
 func login(env *Env, w http.ResponseWriter, r *http.Request) {
 	_, err := env.checkSession(w, r)
@@ -55,7 +56,8 @@ func login(env *Env, w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-authenticate は パスワード認証を行うハンドラーです。
+authenticate は ログインフォームから送信されたメールアドレスとパスワードを検証し、
+認証に成功した場合は新しいセッションを作成してクッキーに保存します。
 */
 func authenticate(env *Env, w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
@@ -95,7 +97,8 @@ func authenticate(env *Env, w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-logout は ログアウト処理を行うハンドラーです。
+logout は ユーザーのセッションを破棄し、ログアウト状態にします。
+データベース上のセッションレコードも削除します。
 */
 func logout(env *Env, w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("_cookie")

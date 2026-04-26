@@ -6,6 +6,8 @@ import (
 	"todo_app/app/models"
 )
 
+// top はアプリケーションのトップページを表示するハンドラーです。
+// すでにログイン済みの場合は /todos へリダイレクトします。
 func top(env *Env, w http.ResponseWriter, r *http.Request) {
 	_, err := env.checkSession(w, r)
 	if err != nil {
@@ -17,6 +19,7 @@ func top(env *Env, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// index はログインユーザーのTODO一覧ページを表示するハンドラーです。
 func index(env *Env, w http.ResponseWriter, r *http.Request) {
 	session, err := env.checkSession(w, r)
 	if err != nil {
@@ -39,6 +42,7 @@ func index(env *Env, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// todoNew は新規TODO作成フォームを表示するハンドラーです。
 func todoNew(env *Env, w http.ResponseWriter, r *http.Request) {
 	_, err := env.checkSession(w, r)
 	if err != nil {
@@ -48,6 +52,7 @@ func todoNew(env *Env, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// todoSave は送信されたフォームデータをもとに新しいTODOを保存するハンドラーです。
 func todoSave(env *Env, w http.ResponseWriter, r *http.Request) {
 	session, err := env.checkSession(w, r)
 	if err != nil {
@@ -76,6 +81,7 @@ func todoSave(env *Env, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// todoEdit は指定されたIDのTODOを編集するフォームを表示するハンドラーです。
 func todoEdit(env *Env, w http.ResponseWriter, r *http.Request, id int) {
 	session, err := env.checkSession(w, r)
 	if err != nil {
@@ -98,6 +104,7 @@ func todoEdit(env *Env, w http.ResponseWriter, r *http.Request, id int) {
 
 }
 
+// todoUpdate は送信されたフォームデータをもとに既存のTODOを更新するハンドラーです。
 func todoUpdate(env *Env, w http.ResponseWriter, r *http.Request, id int) {
 	session, err := env.checkSession(w, r)
 	if err != nil {
@@ -126,6 +133,7 @@ func todoUpdate(env *Env, w http.ResponseWriter, r *http.Request, id int) {
 	}
 }
 
+// todoDelete は指定されたIDのTODOを削除するハンドラーです。
 func todoDelete(env *Env, w http.ResponseWriter, r *http.Request, id int) {
 	session, err := env.checkSession(w, r)
 	if err != nil {

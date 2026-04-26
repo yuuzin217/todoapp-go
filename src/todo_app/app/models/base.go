@@ -9,7 +9,9 @@ import (
 )
 
 /*
-テーブル名の一蘭
+定数定義
+将来的に参照される可能性を考慮し、テーブル名を定数として定義しています。
+現在は SQLインジェクション対策のため CREATE TABLE 文で直接ハードコードしています。
 */
 const (
 	tableNameUser    = "users"
@@ -17,6 +19,8 @@ const (
 	tableNameSession = "sessions"
 )
 
+// CreateTables はアプリケーションで必要なデータベーステーブル (users, todos, sessions) を作成します。
+// 既にテーブルが存在する場合は作成をスキップします (IF NOT EXISTS)。
 func CreateTables(db *sql.DB) {
 	cmdU := `CREATE TABLE IF NOT EXISTS users(
 		id INTEGER PRIMARY KEY AUTOINCREMENT,

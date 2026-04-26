@@ -12,13 +12,15 @@ import (
 	"todo_app/config"
 )
 
+// Env はコントローラー層全体で共有される依存関係 (データベース接続や設定など) を保持する構造体です。
+// これにより、グローバル変数を使わずに各ハンドラーへ依存を注入(Dependency Injection)できます。
 type Env struct {
-	DB     *sql.DB
-	Config *config.ConfigList
+	DB     *sql.DB            // データベースコネクション
+	Config *config.ConfigList // アプリケーション設定
 }
 
 /*
-generateHTML は HTMLを生成します。
+generateHTML は 指定されたテンプレートファイル群をパースしてHTMLを生成し、レスポンスとして書き込みます。
 */
 func generateHTML(w http.ResponseWriter, data interface{}, fileNames ...string) {
 	var files []string
@@ -46,6 +48,7 @@ func (env *Env) checkSession(w http.ResponseWriter, r *http.Request) (session mo
 
 var validPath = regexp.MustCompile("^/todos/(edit|update|delete)/([0-9]+)")
 
+// parseURL は URLパスからTODOのIDを抽出し、指定されたハンドラー関数に渡すミドルウェアです。
 func (env *Env) parseURL(fn func(*Env, http.ResponseWriter, *http.Request, int)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println(r.URL.Path)
@@ -68,6 +71,7 @@ func (env *Env) parseURL(fn func(*Env, http.ResponseWriter, *http.Request, int))
 
 }
 
+// makeHandler は Envを必要とするハンドラー関数を、標準の http.HandlerFunc インターフェースに適合させるクロージャです。
 func makeHandler(env *Env, fn func(*Env, http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fn(env, w, r)
@@ -75,7 +79,7 @@ func makeHandler(env *Env, fn func(*Env, http.ResponseWriter, *http.Request)) ht
 }
 
 /*
-StartMainServer は サーバーを起動します。
+StartMainServer は ルーティングを設定し、Webサーバーを起動します。
 */
 func StartMainServer(env *Env) error {
 	// FileServerでルートディレクトリを指定する。
