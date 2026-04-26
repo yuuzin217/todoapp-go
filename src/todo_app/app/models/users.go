@@ -1,8 +1,12 @@
 package models
 
 import (
+	"context"
+	"database/sql"
 	"log"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
@@ -23,7 +27,7 @@ type Session struct {
 	CreatedAt time.Time
 }
 
-func (u *User) CreateUser() (err error) {
+func (u *User) CreateUser(ctx context.Context, db *sql.DB) (err error) {
 	cmd := `INSERT INTO users(
 		uuid,
 		name,
@@ -31,12 +35,19 @@ func (u *User) CreateUser() (err error) {
 		password,
 		created_at) values (?, ?, ?, ?, ?)`
 
-	_, err = DB.Exec(
+	hash, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	_, err = db.ExecContext(
+		ctx,
 		cmd,
 		createUUID(),
 		u.Name,
 		u.Email,
-		Encrypt(u.Password),
+		string(hash),
 		time.Now(),
 	)
 	if err != nil {
@@ -45,10 +56,10 @@ func (u *User) CreateUser() (err error) {
 	return err
 }
 
-func GetUser(id int) (user User, err error) {
+func GetUser(ctx context.Context, db *sql.DB, id int) (user User, err error) {
 	user = User{}
 	cmd := `SELECT id,uuid, name, email, password, created_at FROM users WHERE id = ?`
-	err = DB.QueryRow(cmd, id).Scan(
+	err = db.QueryRowContext(ctx, cmd, id).Scan(
 		&user.ID,
 		&user.UUID,
 		&user.Name,
@@ -59,18 +70,18 @@ func GetUser(id int) (user User, err error) {
 	return user, err
 }
 
-func (u *User) UpdateUser() (err error) {
+func (u *User) UpdateUser(ctx context.Context, db *sql.DB) (err error) {
 	cmd := `UPDATE users SET name = ?, email = ? WHERE id = ?`
-	_, err = DB.Exec(cmd, u.Name, u.Email, u.ID)
+	_, err = db.ExecContext(ctx, cmd, u.Name, u.Email, u.ID)
 	if err != nil {
 		log.Println(err)
 	}
 	return err
 }
 
-func (u *User) DeleteUser() (err error) {
+func (u *User) DeleteUser(ctx context.Context, db *sql.DB) (err error) {
 	cmd := `DELETE FROM users WHERE id = ?`
-	_, err = DB.Exec(cmd, u.ID)
+	_, err = db.ExecContext(ctx, cmd, u.ID)
 	if err != nil {
 		log.Println(err)
 	}
@@ -80,11 +91,11 @@ func (u *User) DeleteUser() (err error) {
 /*
 GetUserByEmail は Eメールからユーザー情報を取得します。
 */
-func GetUserByEmail(email string) (user User, err error) {
+func GetUserByEmail(ctx context.Context, db *sql.DB, email string) (user User, err error) {
 	user = User{}
 	cmd := `SELECT id, uuid, name, email, password, created_at
 	FROM users WHERE email = ?`
-	err = DB.QueryRow(cmd, email).Scan(
+	err = db.QueryRowContext(ctx, cmd, email).Scan(
 		&user.ID,
 		&user.UUID,
 		&user.Name,
@@ -95,16 +106,16 @@ func GetUserByEmail(email string) (user User, err error) {
 	return user, err
 }
 
-func (u *User) CreateSession() (session Session, err error) {
+func (u *User) CreateSession(ctx context.Context, db *sql.DB) (session Session, err error) {
 	session = Session{}
 	cmd1 := `INSERT INTO sessions (uuid, email, user_id, created_at) VALUES (?, ?, ?, ?)`
-	_, err = DB.Exec(cmd1, createUUID(), u.Email, u.ID, time.Now())
+	_, err = db.ExecContext(ctx, cmd1, createUUID(), u.Email, u.ID, time.Now())
 	if err != nil {
 		log.Println(err)
 	}
 
 	cmd2 := `SELECT id, uuid, email, user_id, created_at FROM sessions WHERE user_id = ? AND email = ?`
-	if err = DB.QueryRow(cmd2, u.ID, u.Email).Scan(
+	if err = db.QueryRowContext(ctx, cmd2, u.ID, u.Email).Scan(
 		&session.ID,
 		&session.UUID,
 		&session.Email,
@@ -120,11 +131,11 @@ func (u *User) CreateSession() (session Session, err error) {
 /*
 CheckSession は セッションを確認します。
 */
-func (s *Session) CheckSession() (valid bool, err error) {
+func (s *Session) CheckSession(ctx context.Context, db *sql.DB) (valid bool, err error) {
 	cmd := `select id, uuid, email, user_id, created_at
 	 from sessions where uuid = ?`
 
-	err = DB.QueryRow(cmd, s.UUID).Scan(
+	err = db.QueryRowContext(ctx, cmd, s.UUID).Scan(
 		&s.ID,
 		&s.UUID,
 		&s.Email,
@@ -141,9 +152,9 @@ func (s *Session) CheckSession() (valid bool, err error) {
 	return valid, err
 }
 
-func (s *Session) DeleteSessionByUUID() (err error) {
+func (s *Session) DeleteSessionByUUID(ctx context.Context, db *sql.DB) (err error) {
 	cmd := `DELETE FROM sessions WHERE uuid = ?`
-	_, err = DB.Exec(cmd, s.UUID)
+	_, err = db.ExecContext(ctx, cmd, s.UUID)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -151,10 +162,10 @@ func (s *Session) DeleteSessionByUUID() (err error) {
 	return nil
 }
 
-func (s *Session) GetUserBySession() (user User, err error) {
+func (s *Session) GetUserBySession(ctx context.Context, db *sql.DB) (user User, err error) {
 	user = User{}
 	cmd := `SELECT id, uuid, name, email, created_at FROM users WHERE id = ?`
-	if err = DB.QueryRow(cmd, s.UserID).Scan(
+	if err = db.QueryRowContext(ctx, cmd, s.UserID).Scan(
 		&user.ID,
 		&user.UUID,
 		&user.Name,

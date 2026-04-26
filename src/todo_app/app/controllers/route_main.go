@@ -6,8 +6,8 @@ import (
 	"todo_app/app/models"
 )
 
-func top(w http.ResponseWriter, r *http.Request) {
-	_, err := checkSession(w, r)
+func top(env *Env, w http.ResponseWriter, r *http.Request) {
+	_, err := env.checkSession(w, r)
 	if err != nil {
 		// top画面を生成
 		generateHTML(w, nil, "layout", "public_navbar", "top")
@@ -17,28 +17,30 @@ func top(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func index(w http.ResponseWriter, r *http.Request) {
-	session, err := checkSession(w, r)
+func index(env *Env, w http.ResponseWriter, r *http.Request) {
+	session, err := env.checkSession(w, r)
 	if err != nil {
 		http.Redirect(w, r, "/", MovedPermanently)
 	} else {
-		user, err := session.GetUserBySession()
+		user, err := session.GetUserBySession(r.Context(), env.DB)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		todos, err := user.GetTodosByUser()
+		todos, err := user.GetTodosByUser(r.Context(), env.DB)
 		if err != nil {
 			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		user.Todos = todos
 		generateHTML(w, user, "layout", "private_navbar", "index")
 	}
 }
 
-func todoNew(w http.ResponseWriter, r *http.Request) {
-	_, err := checkSession(w, r)
+func todoNew(env *Env, w http.ResponseWriter, r *http.Request) {
+	_, err := env.checkSession(w, r)
 	if err != nil {
 		http.Redirect(w, r, "/login", MovedPermanently)
 	} else {
@@ -46,8 +48,8 @@ func todoNew(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func todoSave(w http.ResponseWriter, r *http.Request) {
-	session, err := checkSession(w, r)
+func todoSave(env *Env, w http.ResponseWriter, r *http.Request) {
+	session, err := env.checkSession(w, r)
 	if err != nil {
 		http.Redirect(w, r, "/login", MovedPermanently)
 	} else {
@@ -57,14 +59,14 @@ func todoSave(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		user, err := session.GetUserBySession()
+		user, err := session.GetUserBySession(r.Context(), env.DB)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		content := r.PostFormValue("content")
-		if err := user.CreateTodo(content); err != nil {
+		if err := user.CreateTodo(r.Context(), env.DB, content); err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -74,18 +76,18 @@ func todoSave(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func todoEdit(w http.ResponseWriter, r *http.Request, id int) {
-	session, err := checkSession(w, r)
+func todoEdit(env *Env, w http.ResponseWriter, r *http.Request, id int) {
+	session, err := env.checkSession(w, r)
 	if err != nil {
 		http.Redirect(w, r, "/login", MovedPermanently)
 	} else {
-		_, err := session.GetUserBySession()
+		_, err := session.GetUserBySession(r.Context(), env.DB)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		todo, err := models.GetTodo(id)
+		todo, err := models.GetTodo(r.Context(), env.DB, id)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -96,8 +98,8 @@ func todoEdit(w http.ResponseWriter, r *http.Request, id int) {
 
 }
 
-func todoUpdate(w http.ResponseWriter, r *http.Request, id int) {
-	session, err := checkSession(w, r)
+func todoUpdate(env *Env, w http.ResponseWriter, r *http.Request, id int) {
+	session, err := env.checkSession(w, r)
 	if err != nil {
 		http.Redirect(w, r, "/login", MovedPermanently)
 	} else {
@@ -107,7 +109,7 @@ func todoUpdate(w http.ResponseWriter, r *http.Request, id int) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		user, err := session.GetUserBySession()
+		user, err := session.GetUserBySession(r.Context(), env.DB)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -115,7 +117,7 @@ func todoUpdate(w http.ResponseWriter, r *http.Request, id int) {
 		}
 		content := r.PostFormValue("content")
 		todo := &models.Todo{ID: id, Content: content, UserID: user.ID}
-		if err := todo.UpdateTodo(); err != nil {
+		if err := todo.UpdateTodo(r.Context(), env.DB); err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -124,24 +126,24 @@ func todoUpdate(w http.ResponseWriter, r *http.Request, id int) {
 	}
 }
 
-func todoDelete(w http.ResponseWriter, r *http.Request, id int) {
-	session, err := checkSession(w, r)
+func todoDelete(env *Env, w http.ResponseWriter, r *http.Request, id int) {
+	session, err := env.checkSession(w, r)
 	if err != nil {
 		http.Redirect(w, r, "/login", MovedPermanently)
 	} else {
-		_, err := session.GetUserBySession()
+		_, err := session.GetUserBySession(r.Context(), env.DB)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		todo, err := models.GetTodo(id)
+		todo, err := models.GetTodo(r.Context(), env.DB, id)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if err := todo.DeleteTodo(); err != nil {
+		if err := todo.DeleteTodo(r.Context(), env.DB); err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

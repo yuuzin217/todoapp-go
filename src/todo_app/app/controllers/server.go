@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"database/sql"
 	"fmt"
 	"html/template"
 	"log"
@@ -10,6 +11,11 @@ import (
 	"todo_app/app/models"
 	"todo_app/config"
 )
+
+type Env struct {
+	DB     *sql.DB
+	Config *config.ConfigList
+}
 
 /*
 generateHTML は HTMLを生成します。
@@ -27,11 +33,11 @@ func generateHTML(w http.ResponseWriter, data interface{}, fileNames ...string) 
 /*
 checkSession は セッションの確認をおこないます。
 */
-func checkSession(w http.ResponseWriter, r *http.Request) (session models.Session, err error) {
+func (env *Env) checkSession(w http.ResponseWriter, r *http.Request) (session models.Session, err error) {
 	cookie, err := r.Cookie("_cookie")
 	if err == nil {
 		session = models.Session{UUID: cookie.Value}
-		if ok, _ := session.CheckSession(); !ok {
+		if ok, _ := session.CheckSession(r.Context(), env.DB); !ok {
 			err = fmt.Errorf("invalid session")
 		}
 	}
@@ -40,7 +46,7 @@ func checkSession(w http.ResponseWriter, r *http.Request) (session models.Sessio
 
 var validPath = regexp.MustCompile("^/todos/(edit|update|delete)/([0-9]+)")
 
-func parseURL(fn func(http.ResponseWriter, *http.Request, int)) http.HandlerFunc {
+func (env *Env) parseURL(fn func(*Env, http.ResponseWriter, *http.Request, int)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println(r.URL.Path)
 		q := validPath.FindStringSubmatch(r.URL.Path)
@@ -57,17 +63,23 @@ func parseURL(fn func(http.ResponseWriter, *http.Request, int)) http.HandlerFunc
 			return
 		}
 
-		fn(w, r, qi)
+		fn(env, w, r, qi)
 	}
 
+}
+
+func makeHandler(env *Env, fn func(*Env, http.ResponseWriter, *http.Request)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fn(env, w, r)
+	}
 }
 
 /*
 StartMainServer は サーバーを起動します。
 */
-func StartMainServer() error {
+func StartMainServer(env *Env) error {
 	// FileServerでルートディレクトリを指定する。
-	files := http.FileServer(http.Dir(config.Config.Static))
+	files := http.FileServer(http.Dir(env.Config.Static))
 	/*
 		指定されたパターンのハンドラーを DefaultServeMux に登録する。
 		StripPrefix では URL のパスから prefix を削除している。
@@ -78,16 +90,16 @@ func StartMainServer() error {
 		URLに対応するハンドラー関数を登録する
 		func(ResponseWriter, *Request)のハンドラー関数を実装する必要がある
 	*/
-	http.HandleFunc("/", top)
-	http.HandleFunc("/signup", signup)
-	http.HandleFunc("/login", login)
-	http.HandleFunc("/authenticate", authenticate)
-	http.HandleFunc("/todos", index)
-	http.HandleFunc("/logout", logout)
-	http.HandleFunc("/todos/new", todoNew)
-	http.HandleFunc("/todos/save", todoSave)
-	http.HandleFunc("/todos/edit/", parseURL(todoEdit))
-	http.HandleFunc("/todos/update/", parseURL(todoUpdate))
-	http.HandleFunc("/todos/delete/", parseURL(todoDelete))
-	return http.ListenAndServe("localhost:"+config.Config.Port, nil)
+	http.HandleFunc("/", makeHandler(env, top))
+	http.HandleFunc("/signup", makeHandler(env, signup))
+	http.HandleFunc("/login", makeHandler(env, login))
+	http.HandleFunc("/authenticate", makeHandler(env, authenticate))
+	http.HandleFunc("/todos", makeHandler(env, index))
+	http.HandleFunc("/logout", makeHandler(env, logout))
+	http.HandleFunc("/todos/new", makeHandler(env, todoNew))
+	http.HandleFunc("/todos/save", makeHandler(env, todoSave))
+	http.HandleFunc("/todos/edit/", env.parseURL(todoEdit))
+	http.HandleFunc("/todos/update/", env.parseURL(todoUpdate))
+	http.HandleFunc("/todos/delete/", env.parseURL(todoDelete))
+	return http.ListenAndServe("localhost:"+env.Config.Port, nil)
 }
