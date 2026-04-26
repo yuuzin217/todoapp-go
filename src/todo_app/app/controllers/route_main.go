@@ -25,8 +25,13 @@ func index(w http.ResponseWriter, r *http.Request) {
 		user, err := session.GetUserBySession()
 		if err != nil {
 			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
-		todos, _ := user.GetTodosByUser()
+		todos, err := user.GetTodosByUser()
+		if err != nil {
+			log.Println(err)
+		}
 		user.Todos = todos
 		generateHTML(w, user, "layout", "private_navbar", "index")
 	}
@@ -49,14 +54,20 @@ func todoSave(w http.ResponseWriter, r *http.Request) {
 		err = r.ParseForm()
 		if err != nil {
 			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		user, err := session.GetUserBySession()
 		if err != nil {
 			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		content := r.PostFormValue("content")
 		if err := user.CreateTodo(content); err != nil {
 			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		http.Redirect(w, r, "/todos", MovedPermanently)
@@ -71,10 +82,14 @@ func todoEdit(w http.ResponseWriter, r *http.Request, id int) {
 		_, err := session.GetUserBySession()
 		if err != nil {
 			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		todo, err := models.GetTodo(id)
 		if err != nil {
 			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		generateHTML(w, todo, "layout", "private_navbar", "todo_edit")
 	}
@@ -89,15 +104,21 @@ func todoUpdate(w http.ResponseWriter, r *http.Request, id int) {
 		err := r.ParseForm()
 		if err != nil {
 			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		user, err := session.GetUserBySession()
 		if err != nil {
 			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		content := r.PostFormValue("content")
 		todo := &models.Todo{ID: id, Content: content, UserID: user.ID}
 		if err := todo.UpdateTodo(); err != nil {
 			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		http.Redirect(w, r, "/todos", MovedPermanently)
 	}
@@ -111,13 +132,19 @@ func todoDelete(w http.ResponseWriter, r *http.Request, id int) {
 		_, err := session.GetUserBySession()
 		if err != nil {
 			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		todo, err := models.GetTodo(id)
 		if err != nil {
 			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		if err := todo.DeleteTodo(); err != nil {
 			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		http.Redirect(w, r, "/todos", MovedPermanently)
 	}

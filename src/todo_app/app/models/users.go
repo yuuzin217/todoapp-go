@@ -40,7 +40,7 @@ func (u *User) CreateUser() (err error) {
 		time.Now(),
 	)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 	return err
 }
@@ -63,7 +63,7 @@ func (u *User) UpdateUser() (err error) {
 	cmd := `UPDATE users SET name = ?, email = ? WHERE id = ?`
 	_, err = DB.Exec(cmd, u.Name, u.Email, u.ID)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 	return err
 }
@@ -72,7 +72,7 @@ func (u *User) DeleteUser() (err error) {
 	cmd := `DELETE FROM users WHERE id = ?`
 	_, err = DB.Exec(cmd, u.ID)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 	return err
 }
@@ -145,7 +145,8 @@ func (s *Session) DeleteSessionByUUID() (err error) {
 	cmd := `DELETE FROM sessions WHERE uuid = ?`
 	_, err = DB.Exec(cmd, s.UUID)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
+		return err
 	}
 	return nil
 }
