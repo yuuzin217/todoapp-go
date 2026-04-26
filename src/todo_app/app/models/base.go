@@ -2,19 +2,10 @@ package models
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
-	"todo_app/config"
 
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
-
-	"golang.org/x/crypto/sha3" // https://pkg.go.dev/golang.org/x/crypto/sha3
-)
-
-var (
-	DB  *sql.DB
-	err error
 )
 
 /*
@@ -26,39 +17,39 @@ const (
 	tableNameSession = "sessions"
 )
 
-func init() {
-	// SQLドライバーとDBNameを渡してDBコネクションを取得
-	DB, err = sql.Open(config.Config.SQLDriver, config.Config.DBName)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	cmdU := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s(
+func CreateTables(db *sql.DB) {
+	cmdU := `CREATE TABLE IF NOT EXISTS users(
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		uuid STRING NOT NULL UNIQUE,
 		name STRING,
 		email STRING,
 		password STRING,
-		created_at DATETIME)`, tableNameUser)
+		created_at DATETIME)`
 
-	DB.Exec(cmdU)
+	if _, err := db.Exec(cmdU); err != nil {
+		log.Fatalln(err)
+	}
 
-	cmdT := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s(
+	cmdT := `CREATE TABLE IF NOT EXISTS todos(
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		content TEXT,
 		user_id INTEGER,
-		created_at DATETIME)`, tableNameTodo)
+		created_at DATETIME)`
 
-	DB.Exec(cmdT)
+	if _, err := db.Exec(cmdT); err != nil {
+		log.Fatalln(err)
+	}
 
-	cmdS := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s(
+	cmdS := `CREATE TABLE IF NOT EXISTS sessions(
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		uuid STRING NOT NULL UNIQUE,
 		email STRING,
 		user_id INTEGER,
-		created_at DATETIME)`, tableNameSession)
+		created_at DATETIME)`
 
-	DB.Exec(cmdS)
+	if _, err := db.Exec(cmdS); err != nil {
+		log.Fatalln(err)
+	}
 }
 
 /*
@@ -69,10 +60,3 @@ func createUUID() (uuidobj uuid.UUID) {
 	return uuidobj
 }
 
-/*
-Encrypt は パスワードをハッシュ値で暗号化します。
-*/
-func Encrypt(plainText string) (crypText string) {
-	crypText = fmt.Sprintf("%x", sha3.Sum256([]byte(plainText)))
-	return crypText
-}

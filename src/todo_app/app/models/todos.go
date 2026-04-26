@@ -1,6 +1,8 @@
 package models
 
 import (
+	"context"
+	"database/sql"
 	"log"
 	"time"
 )
@@ -12,19 +14,19 @@ type Todo struct {
 	CreatedAt time.Time
 }
 
-func (u *User) CreateTodo(content string) (err error) {
+func (u *User) CreateTodo(ctx context.Context, db *sql.DB, content string) (err error) {
 	cmd := `INSERT INTO todos (content, user_id, created_at) VALUES (?, ?, ?)`
-	_, err = DB.Exec(cmd, content, u.ID, time.Now())
+	_, err = db.ExecContext(ctx, cmd, content, u.ID, time.Now())
 	if err != nil {
 		log.Println(err)
 	}
 	return err
 }
 
-func GetTodo(id int) (todo Todo, err error) {
+func GetTodo(ctx context.Context, db *sql.DB, id int) (todo Todo, err error) {
 	todo = Todo{}
 	cmd := `SELECT id, content, user_id, created_at FROM todos WHERE id = ?`
-	if err = DB.QueryRow(cmd, id).Scan(
+	if err = db.QueryRowContext(ctx, cmd, id).Scan(
 		&todo.ID,
 		&todo.Content,
 		&todo.UserID,
@@ -36,10 +38,10 @@ func GetTodo(id int) (todo Todo, err error) {
 	return todo, nil
 }
 
-func GetTodos() (todos []Todo, err error) {
+func GetTodos(ctx context.Context, db *sql.DB) (todos []Todo, err error) {
 
 	cmd := `SELECT id, content, user_id, created_at FROM todos`
-	rows, err := DB.Query(cmd)
+	rows, err := db.QueryContext(ctx, cmd)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -63,9 +65,9 @@ func GetTodos() (todos []Todo, err error) {
 	return todos, err
 }
 
-func (u *User) GetTodosByUser() (todos []Todo, err error) {
+func (u *User) GetTodosByUser(ctx context.Context, db *sql.DB) (todos []Todo, err error) {
 	cmd := `SELECT id, content, user_id, created_at FROM todos WHERE user_id = ?`
-	rows, err := DB.Query(cmd, u.ID)
+	rows, err := db.QueryContext(ctx, cmd, u.ID)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -88,18 +90,18 @@ func (u *User) GetTodosByUser() (todos []Todo, err error) {
 	return todos, err
 }
 
-func (t *Todo) UpdateTodo() error {
+func (t *Todo) UpdateTodo(ctx context.Context, db *sql.DB) error {
 	cmd := `UPDATE todos SET content = ?, user_id = ? WHERE id = ?`
-	_, err = DB.Exec(cmd, t.Content, t.UserID, t.ID)
+	_, err := db.ExecContext(ctx, cmd, t.Content, t.UserID, t.ID)
 	if err != nil {
 		log.Println(err)
 	}
 	return err
 }
 
-func (t *Todo) DeleteTodo() error {
+func (t *Todo) DeleteTodo(ctx context.Context, db *sql.DB) error {
 	cmd := `DELETE FROM todos WHERE id = ?`
-	_, err = DB.Exec(cmd, t.ID)
+	_, err := db.ExecContext(ctx, cmd, t.ID)
 	if err != nil {
 		log.Println(err)
 	}

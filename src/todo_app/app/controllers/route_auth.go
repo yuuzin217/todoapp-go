@@ -4,14 +4,16 @@ import (
 	"log"
 	"net/http"
 	"todo_app/app/models"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 /*
 signup は ユーザー登録を行います。
 */
-func signup(w http.ResponseWriter, r *http.Request) {
+func signup(env *Env, w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		_, err := checkSession(w, r)
+		_, err := env.checkSession(w, r)
 		if err != nil {
 			generateHTML(w, nil, "layout", "public_navbar", "signup")
 		} else {
@@ -31,7 +33,7 @@ func signup(w http.ResponseWriter, r *http.Request) {
 			Email:    r.PostFormValue("email"),
 			Password: r.PostFormValue("password"),
 		}
-		if err := user.CreateUser(); err != nil {
+		if err := user.CreateUser(r.Context(), env.DB); err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -43,8 +45,8 @@ func signup(w http.ResponseWriter, r *http.Request) {
 /*
 login は ログイン処理を行うハンドラーです。
 */
-func login(w http.ResponseWriter, r *http.Request) {
-	_, err := checkSession(w, r)
+func login(env *Env, w http.ResponseWriter, r *http.Request) {
+	_, err := env.checkSession(w, r)
 	if err != nil {
 		generateHTML(w, nil, "layout", "public_navbar", "login")
 	} else {
@@ -55,23 +57,24 @@ func login(w http.ResponseWriter, r *http.Request) {
 /*
 authenticate は パスワード認証を行うハンドラーです。
 */
-func authenticate(w http.ResponseWriter, r *http.Request) {
+func authenticate(env *Env, w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	user, err := models.GetUserByEmail(r.PostFormValue("email"))
+	user, err := models.GetUserByEmail(r.Context(), env.DB, r.PostFormValue("email"))
 	if err != nil {
 		log.Println(err)
 		http.Redirect(w, r, "/login", MovedPermanently)
 		return
 	}
 	// パスワード整合チェック
-	if user.Password == models.Encrypt(r.PostFormValue("password")) {
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(r.PostFormValue("password")))
+	if err == nil {
 		// セッション作成
-		session, err := user.CreateSession()
+		session, err := user.CreateSession(r.Context(), env.DB)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -94,14 +97,20 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 /*
 logout は ログアウト処理を行うハンドラーです。
 */
-func logout(w http.ResponseWriter, r *http.Request) {
+func logout(env *Env, w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("_cookie")
-	if err != nil {
+	if err != nil && err != http.ErrNoCookie {
 		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	if err != http.ErrNoCookie {
 		session := models.Session{UUID: cookie.Value}
-		session.DeleteSessionByUUID()
+		if err := session.DeleteSessionByUUID(r.Context(), env.DB); err != nil {
+			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 	http.Redirect(w, r, "/login", MovedPermanently)
 }
