@@ -1,15 +1,42 @@
 {{define "content" }}
-    <h1 class="text-center">signup</h1>
-    <form class="form-signin" role="form" action="/signup" method="post">
-        <h2 class="form-signin-heading">
-            <i class="fa fa-comments-o">
-                SampleApp
-            </i>
-        </h2>
-        <div class="lead">登録</div>
-        <input id="name" type="text" name="name" class="form-control" placeholder="お名前" required autofocus>
-        <input type="email" name="email" class="form-control" placeholder="Email" required>
-        <input type="password" name="password" class="form-control" placeholder="パスワード" required>
-        <button class="btn btn-lg btn-primary btn-block" type="submit">登録</button>
+<div class="form-signin">
+    <div class="text-center mb-4">
+        <i class="fa-solid fa-user-plus fs-1 text-primary mb-3"></i>
+        <h1 class="h3 mb-3 fw-bold">Create Account</h1>
+        <p class="text-muted">Join us and start organizing today</p>
+    </div>
+
+    <form action="/signup" method="post">
+        <div class="mb-3">
+            <label class="form-label text-muted small fw-bold">FULL NAME</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="fa-regular fa-user text-muted"></i></span>
+                <input type="text" name="name" class="form-control border-start-0 ps-0" placeholder="John Doe" required autofocus>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label text-muted small fw-bold">EMAIL ADDRESS</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="fa-regular fa-envelope text-muted"></i></span>
+                <input type="email" name="email" class="form-control border-start-0 ps-0" placeholder="name@example.com" required>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label text-muted small fw-bold">PASSWORD</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-lock text-muted"></i></span>
+                <input type="password" name="password" class="form-control border-start-0 ps-0" placeholder="Min. 8 characters" required>
+            </div>
+        </div>
+
+        <button class="btn btn-primary btn-lg w-100 mb-3" type="submit">Create Account</button>
+        
+        <div class="text-center">
+            <span class="text-muted small">Already have an account?</span>
+            <a href="/login" class="small fw-bold text-decoration-none ms-1">Login</a>
+        </div>
     </form>
+</div>
 {{end}}

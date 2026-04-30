@@ -4,16 +4,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SampleApp</title>
+    <title>TodoApp</title>
     <link rel="stylesheet" href="/static/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/static/css/form.css">
+    <link rel="stylesheet" href="/static/css/custom.css?v=1.1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     {{template "navbar"}}
-    <div class="container text-center">
+    <div class="container">
         {{template "content" . }}
     </div>
     
+    <footer class="text-center py-4 mt-5 text-muted">
+        <small>&copy; 2024 TodoApp. Built with Go.</small>
+    </footer>
 </body>
 <script src="/static/js/jquery-3.6.0.min.js"></script>
 <script src="/static/js/bootstrap.bundle.min.js"></script>

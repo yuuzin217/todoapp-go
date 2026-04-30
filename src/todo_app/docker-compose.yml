@@ -3,8 +3,11 @@ services:
     build: .
     ports:
       - "8080:8080"
+    environment:
+      - GO_ENV=development
     volumes:
       - db-data:/app/data
+      - ./app/views:/app/views
 
 volumes:
   db-data:

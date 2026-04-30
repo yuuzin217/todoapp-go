@@ -2,7 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"html/template"
 	"log"
+	"sync"
 	"todo_app/app/controllers"
 	"todo_app/app/models"
 	"todo_app/config"
@@ -26,8 +28,10 @@ func main() {
 
 	// コントローラー層へ依存(DB, 設定)を注入するためのEnv構造体を初期化
 	env := &controllers.Env{
-		DB:     db,
-		Config: cfg,
+		DB:            db,
+		Config:        cfg,
+		TemplateCache: make(map[string]*template.Template),
+		Mu:            sync.RWMutex{},
 	}
 
 	// Webサーバーの起動

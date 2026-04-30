@@ -1,16 +1,34 @@
 {{ define "content" }}
-<h1 class="text-center">login</h1>
-<form class="form-signin center" role="form" action="/authenticate" method="post">
-  <h2 class="form-signin-heading">
-    <i class="fa fa-comments-o">
-      SampleApp
-    </i>
-  </h2>
-  <input type="email" name="email" class="form-control" placeholder="Email" required autofocus>
-  <input type="password" name="password" class="form-control" placeholder="パスワード">
-  <br/>
-  <button class="btn btn-lg btn-primary btn-block" type="submit">ログイン</button>
-  <br/>
-  <a class="lead pull-right" href="/signup">登録</a>
-</form>
+<div class="form-signin">
+    <div class="text-center mb-4">
+        <i class="fa-solid fa-check-double fs-1 text-primary mb-3"></i>
+        <h1 class="h3 mb-3 fw-bold">Welcome Back</h1>
+        <p class="text-muted">Login to manage your tasks</p>
+    </div>
+
+    <form action="/authenticate" method="post">
+        <div class="mb-3">
+            <label class="form-label text-muted small fw-bold">EMAIL ADDRESS</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="fa-regular fa-envelope text-muted"></i></span>
+                <input type="email" name="email" class="form-control border-start-0 ps-0" placeholder="name@example.com" required autofocus>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label text-muted small fw-bold">PASSWORD</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-lock text-muted"></i></span>
+                <input type="password" name="password" class="form-control border-start-0 ps-0" placeholder="Enter your password" required>
+            </div>
+        </div>
+
+        <button class="btn btn-primary btn-lg w-100 mb-3" type="submit">Login</button>
+        
+        <div class="text-center">
+            <span class="text-muted small">Don't have an account?</span>
+            <a href="/signup" class="small fw-bold text-decoration-none ms-1">Sign Up</a>
+        </div>
+    </form>
+</div>
 {{end}}

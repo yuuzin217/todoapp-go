@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
+	"sync"
 	"todo_app/app/models"
 	"todo_app/config"
 )
@@ -15,20 +17,48 @@ import (
 // Env はコントローラー層全体で共有される依存関係 (データベース接続や設定など) を保持する構造体です。
 // これにより、グローバル変数を使わずに各ハンドラーへ依存を注入(Dependency Injection)できます。
 type Env struct {
-	DB     *sql.DB            // データベースコネクション
-	Config *config.ConfigList // アプリケーション設定
+	DB            *sql.DB                       // データベースコネクション
+	Config        *config.ConfigList            // アプリケーション設定
+	TemplateCache map[string]*template.Template // テンプレートキャッシュ (本番用)
+	Mu            sync.RWMutex                  // キャッシュ操作用ミューテックス
 }
 
 /*
 generateHTML は 指定されたテンプレートファイル群をパースしてHTMLを生成し、レスポンスとして書き込みます。
+本番環境 (production) ではキャッシュを使用し、開発環境 (development) では毎回パースを行います。
 */
-func generateHTML(w http.ResponseWriter, data interface{}, fileNames ...string) {
+func (env *Env) generateHTML(w http.ResponseWriter, data interface{}, fileNames ...string) {
 	var files []string
 	for _, file := range fileNames {
 		files = append(files, fmt.Sprintf("app/views/templates/%s.html", file))
 	}
 
+	key := strings.Join(fileNames, ",")
+
+	// 本番環境かつキャッシュがある場合はキャッシュを使用
+	if env.Config.Env == "production" {
+		env.Mu.RLock()
+		t, ok := env.TemplateCache[key]
+		env.Mu.RUnlock()
+		if ok {
+			t.ExecuteTemplate(w, "layout", data)
+			return
+		}
+	}
+
+	// テンプレートのパース
 	templates := template.Must(template.ParseFiles(files...))
+
+	// 本番環境の場合はキャッシュに保存
+	if env.Config.Env == "production" {
+		env.Mu.Lock()
+		if env.TemplateCache == nil {
+			env.TemplateCache = make(map[string]*template.Template)
+		}
+		env.TemplateCache[key] = templates
+		env.Mu.Unlock()
+	}
+
 	templates.ExecuteTemplate(w, "layout", data)
 }
 

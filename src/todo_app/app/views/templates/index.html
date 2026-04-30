@@ -1,14 +1,49 @@
 {{ define "content" }}
-    UserName:{{.Name}}
-    <h1>Sample TodoApp</h1>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="d-flex justify-content-between align-items-center mb-4 mt-4">
+                <div>
+                    <h2 class="fw-bold mb-0 text-primary">My Tasks</h2>
+                    <p class="text-muted mb-0">Welcome back, {{.Name}}!</p>
+                </div>
+                <a href="/todos/new" class="btn btn-create-floating d-flex align-items-center">
+                    <i class="fa-solid fa-plus me-2"></i>New Task
+                </a>
+            </div>
 
-    <p>[<a href="/todos/new">Create</a>]</p>
-    <hr>
-
-    {{ range .Todos }}
-        <div>{{ .Content }}</div>
-        <p>[<a href="/todos/edit/{{.ID}}">Edit</a>]</p>
-        <p>[<a href="/todos/delete/{{.ID}}">Delete</a>]</p>
-        <hr>
-    {{end}}
+            <div class="todo-list mt-4">
+                {{ range .Todos }}
+                <div class="card shadow-sm border-0 mb-3">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="todo-content fw-medium text-dark">{{ .Content }}</div>
+                                <div class="todo-meta d-flex align-items-center mt-2">
+                                    <i class="fa-regular fa-calendar-days me-2"></i>
+                                    {{ .CreatedAt.Format "2006/01/02 15:04" }}
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 ms-3">
+                                <a href="/todos/edit/{{.ID}}" class="btn btn-sm btn-light text-primary border" title="Edit">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                <a href="/todos/delete/{{.ID}}" class="btn btn-sm btn-light text-danger border" title="Delete" onclick="return confirm('Are you sure you want to delete this task?')">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{ else }}
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="fa-solid fa-clipboard-list fs-1 text-muted opacity-25"></i>
+                    </div>
+                    <h4 class="text-muted">No tasks found</h4>
+                    <p class="text-muted">Click the "New Task" button to get started.</p>
+                </div>
+                {{ end }}
+            </div>
+        </div>
+    </div>
 {{end}}
