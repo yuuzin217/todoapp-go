@@ -1,4 +1,4 @@
-.PHONY: up down stop build test
+.PHONY: up up-build down stop build test
 
 # Path to the application directory
 APP_DIR=src/todo_app
@@ -7,6 +7,15 @@ APP_DIR=src/todo_app
 # Using PowerShell for cross-platform compatibility
 TIMESTAMP=$(shell powershell -NoProfile -Command "Get-Date -Format 'yyyyMMdd_HHmmss'")
 LATEST_DUMP=$(shell powershell -NoProfile -Command "Get-ChildItem -Filter '*_dump.sql' $(APP_DIR) | Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty Name")
+
+# Starts the docker containers in detached mode with a fresh build and restores latest DB dump if exists
+up-build:
+	cd $(APP_DIR) && docker compose up -d --build
+ifneq ($(LATEST_DUMP),)
+	@echo "Restoring database from latest dump: $(LATEST_DUMP)..."
+	-docker compose -f $(APP_DIR)/docker-compose.yml exec -T app sqlite3 /app/data/webapp.sql "DROP TABLE IF EXISTS users; DROP TABLE IF EXISTS todos; DROP TABLE IF EXISTS sessions;"
+	-docker compose -f $(APP_DIR)/docker-compose.yml exec -T app sqlite3 /app/data/webapp.sql < $(APP_DIR)/$(LATEST_DUMP)
+endif
 
 # Starts the docker containers in detached mode and restores latest DB dump if exists
 up:
