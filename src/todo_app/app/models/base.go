@@ -22,37 +22,59 @@ const (
 // CreateTables はアプリケーションで必要なデータベーステーブル (users, todos, sessions) を作成します。
 // 既にテーブルが存在する場合は作成をスキップします (IF NOT EXISTS)。
 func CreateTables(db *sql.DB) {
-	cmdU := `CREATE TABLE IF NOT EXISTS users(
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		uuid STRING NOT NULL UNIQUE,
-		name STRING,
-		email STRING,
-		password STRING,
-		created_at DATETIME)`
-
-	if _, err := db.Exec(cmdU); err != nil {
+	// 外部キー制約を有効化 (接続ごとに必要)
+	if _, err := db.Exec("PRAGMA foreign_keys = ON;"); err != nil {
 		log.Fatalln(err)
 	}
 
-	cmdT := `CREATE TABLE IF NOT EXISTS todos(
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		content TEXT,
-		user_id INTEGER,
-		created_at DATETIME)`
-
-	if _, err := db.Exec(cmdT); err != nil {
+	// トランザクションの開始
+	tx, err := db.Begin()
+	if err != nil {
 		log.Fatalln(err)
 	}
 
-	cmdS := `CREATE TABLE IF NOT EXISTS sessions(
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		uuid STRING NOT NULL UNIQUE,
-		email STRING,
-		user_id INTEGER,
-		created_at DATETIME)`
+	// エラー発生時にロールバックするように遅延実行を設定
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			log.Fatalf("Transaction failed, rolling back: %v", err)
+		}
+	}()
 
-	if _, err := db.Exec(cmdS); err != nil {
-		log.Fatalln(err)
+	queries := []string{
+		`CREATE TABLE IF NOT EXISTS users(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			uuid TEXT NOT NULL UNIQUE,
+			name TEXT,
+			email TEXT UNIQUE,
+			password TEXT,
+			created_at DATETIME)`,
+
+		`CREATE TABLE IF NOT EXISTS todos(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			content TEXT,
+			user_id INTEGER,
+			created_at DATETIME,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`,
+
+		`CREATE TABLE IF NOT EXISTS sessions(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			uuid TEXT NOT NULL UNIQUE,
+			email TEXT,
+			user_id INTEGER,
+			created_at DATETIME,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)`,
+	}
+
+	for _, q := range queries {
+		if _, err = tx.Exec(q); err != nil {
+			return // defer内のRollbackが呼ばれる
+		}
+	}
+
+	// すべて成功したらコミット
+	if err = tx.Commit(); err != nil {
+		return
 	}
 }
 
