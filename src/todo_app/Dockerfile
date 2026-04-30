@@ -14,7 +14,7 @@ COPY . .
 
 # Build the application
 # CGO_ENABLED=1 is required for go-sqlite3
-RUN CGO_ENABLED=1 GOOS=linux go build -o todo_app .
+RUN CGO_ENABLED=1 GOOS=linux CGO_CFLAGS="-D_LARGEFILE64_SOURCE" go build -o todo_app .
 
 # Runner stage
 FROM alpine:latest
