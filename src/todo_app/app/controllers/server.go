@@ -105,5 +105,5 @@ func StartMainServer(env *Env) error {
 	http.HandleFunc("/todos/edit/", env.parseURL(todoEdit))
 	http.HandleFunc("/todos/update/", env.parseURL(todoUpdate))
 	http.HandleFunc("/todos/delete/", env.parseURL(todoDelete))
-	return http.ListenAndServe("localhost:"+env.Config.Port, nil)
+	return http.ListenAndServe(":"+env.Config.Port, nil)
 }
