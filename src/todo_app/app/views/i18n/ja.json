@@ -3,6 +3,7 @@
     "MyTasks": "自分のタスク",
     "NewTask": "新規タスク",
     "NoTasksFound": "タスクが見つかりません",
+    "ConfirmDelete": "このタスクを削除してもよろしいですか？",
     "ClickToGetStarted": "「新規タスク」ボタンをクリックして始めましょう。",
     "EditTask": "タスクの編集",
     "UpdateTask": "タスクを更新",

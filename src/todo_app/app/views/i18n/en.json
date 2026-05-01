@@ -3,6 +3,7 @@
     "MyTasks": "My Tasks",
     "NewTask": "New Task",
     "NoTasksFound": "No tasks found",
+    "ConfirmDelete": "Are you sure you want to delete this task?",
     "ClickToGetStarted": "Click the \"New Task\" button to get started.",
     "EditTask": "Edit Task",
     "UpdateTask": "Update Task",
