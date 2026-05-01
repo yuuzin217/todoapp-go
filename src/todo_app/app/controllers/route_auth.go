@@ -38,6 +38,29 @@ func signup(env *Env, w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		// 登録したユーザー情報を取得してセッションを作成（自動ログイン）
+		user, err = models.GetUserByEmail(r.Context(), env.DB, user.Email)
+		if err != nil {
+			log.Println(err)
+			http.Redirect(w, r, "/login", MovedPermanently)
+			return
+		}
+
+		session, err := user.CreateSession(r.Context(), env.DB)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		cookie := http.Cookie{
+			Name:     "_cookie",
+			Value:    session.UUID,
+			Secure:   true,
+			HttpOnly: true,
+		}
+		http.SetCookie(w, &cookie)
 		http.Redirect(w, r, "/", MovedPermanently)
 	}
 }
