@@ -17,7 +17,7 @@ func signup(env *Env, w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			env.generateHTML(w, r, nil, "layout", "public_navbar", "signup")
 		} else {
-			http.Redirect(w, r, "/todos", MovedPermanently)
+			http.Redirect(w, r, "/todos", MovedTemporarily)
 		}
 	} else if r.Method == "POST" {
 		// 入力フォームの解析
@@ -43,7 +43,7 @@ func signup(env *Env, w http.ResponseWriter, r *http.Request) {
 		user, err = models.GetUserByEmail(r.Context(), env.DB, user.Email)
 		if err != nil {
 			log.Println(err)
-			http.Redirect(w, r, "/login", MovedPermanently)
+			http.Redirect(w, r, "/login", MovedTemporarily)
 			return
 		}
 
@@ -57,11 +57,12 @@ func signup(env *Env, w http.ResponseWriter, r *http.Request) {
 		cookie := http.Cookie{
 			Name:     "_cookie",
 			Value:    session.UUID,
-			Secure:   true,
+			Path:     "/",
 			HttpOnly: true,
+			Secure:   env.Config.Env == "production",
 		}
 		http.SetCookie(w, &cookie)
-		http.Redirect(w, r, "/", MovedPermanently)
+		http.Redirect(w, r, "/", MovedTemporarily)
 	}
 }
 
@@ -92,7 +93,7 @@ func authenticate(env *Env, w http.ResponseWriter, r *http.Request) {
 	user, err := models.GetUserByEmailOrName(r.Context(), env.DB, r.PostFormValue("identifier"))
 	if err != nil {
 		log.Println(err)
-		http.Redirect(w, r, "/login", MovedPermanently)
+		http.Redirect(w, r, "/login", MovedTemporarily)
 		return
 	}
 	// パスワード整合チェック
@@ -106,16 +107,17 @@ func authenticate(env *Env, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		cookie := http.Cookie{
-			Name:     "_cookie",    // Key
-			Value:    session.UUID, // Value
-			Secure:   true,         // https通信のみcookie送信、インジェクション対策
-			HttpOnly: true,         // 参照操作権限をhttpアクセスのみに限定、JavaScriptからの参照防止
+			Name:     "_cookie",
+			Value:    session.UUID,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   env.Config.Env == "production",
 		}
 		// クッキーを設定
 		http.SetCookie(w, &cookie)
-		http.Redirect(w, r, "/", MovedPermanently)
+		http.Redirect(w, r, "/", MovedTemporarily)
 	} else {
-		http.Redirect(w, r, "/login", MovedPermanently)
+		http.Redirect(w, r, "/login", MovedTemporarily)
 	}
 }
 
@@ -137,6 +139,10 @@ func logout(env *Env, w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		// クッキーを無効化
+		cookie.MaxAge = -1
+		cookie.Path = "/"
+		http.SetCookie(w, cookie)
 	}
-	http.Redirect(w, r, "/login", MovedPermanently)
+	http.Redirect(w, r, "/login", MovedTemporarily)
 }

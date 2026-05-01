@@ -15,7 +15,7 @@ func top(env *Env, w http.ResponseWriter, r *http.Request) {
 		env.generateHTML(w, r, nil, "layout", "public_navbar", "top")
 	} else {
 		// todos画面にリダイレクト
-		http.Redirect(w, r, "/todos", MovedPermanently)
+		http.Redirect(w, r, "/todos", MovedTemporarily)
 	}
 }
 
@@ -23,7 +23,7 @@ func top(env *Env, w http.ResponseWriter, r *http.Request) {
 func index(env *Env, w http.ResponseWriter, r *http.Request) {
 	session, err := env.checkSession(w, r)
 	if err != nil {
-		http.Redirect(w, r, "/", MovedPermanently)
+		http.Redirect(w, r, "/", MovedTemporarily)
 	} else {
 		user, err := session.GetUserBySession(r.Context(), env.DB)
 		if err != nil {
@@ -46,7 +46,7 @@ func index(env *Env, w http.ResponseWriter, r *http.Request) {
 func todoNew(env *Env, w http.ResponseWriter, r *http.Request) {
 	_, err := env.checkSession(w, r)
 	if err != nil {
-		http.Redirect(w, r, "/login", MovedPermanently)
+		http.Redirect(w, r, "/login", MovedTemporarily)
 	} else {
 		env.generateHTML(w, r, nil, "layout", "private_navbar", "todo_new")
 	}
@@ -56,7 +56,7 @@ func todoNew(env *Env, w http.ResponseWriter, r *http.Request) {
 func todoSave(env *Env, w http.ResponseWriter, r *http.Request) {
 	session, err := env.checkSession(w, r)
 	if err != nil {
-		http.Redirect(w, r, "/login", MovedPermanently)
+		http.Redirect(w, r, "/login", MovedTemporarily)
 	} else {
 		err = r.ParseForm()
 		if err != nil {
@@ -77,7 +77,7 @@ func todoSave(env *Env, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Redirect(w, r, "/todos", MovedPermanently)
+		http.Redirect(w, r, "/todos", MovedTemporarily)
 	}
 }
 
@@ -85,7 +85,7 @@ func todoSave(env *Env, w http.ResponseWriter, r *http.Request) {
 func todoEdit(env *Env, w http.ResponseWriter, r *http.Request, id int) {
 	session, err := env.checkSession(w, r)
 	if err != nil {
-		http.Redirect(w, r, "/login", MovedPermanently)
+		http.Redirect(w, r, "/login", MovedTemporarily)
 	} else {
 		_, err := session.GetUserBySession(r.Context(), env.DB)
 		if err != nil {
@@ -108,7 +108,7 @@ func todoEdit(env *Env, w http.ResponseWriter, r *http.Request, id int) {
 func todoUpdate(env *Env, w http.ResponseWriter, r *http.Request, id int) {
 	session, err := env.checkSession(w, r)
 	if err != nil {
-		http.Redirect(w, r, "/login", MovedPermanently)
+		http.Redirect(w, r, "/login", MovedTemporarily)
 	} else {
 		err := r.ParseForm()
 		if err != nil {
@@ -129,7 +129,7 @@ func todoUpdate(env *Env, w http.ResponseWriter, r *http.Request, id int) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, "/todos", MovedPermanently)
+		http.Redirect(w, r, "/todos", MovedTemporarily)
 	}
 }
 
@@ -137,7 +137,7 @@ func todoUpdate(env *Env, w http.ResponseWriter, r *http.Request, id int) {
 func todoDelete(env *Env, w http.ResponseWriter, r *http.Request, id int) {
 	session, err := env.checkSession(w, r)
 	if err != nil {
-		http.Redirect(w, r, "/login", MovedPermanently)
+		http.Redirect(w, r, "/login", MovedTemporarily)
 	} else {
 		_, err := session.GetUserBySession(r.Context(), env.DB)
 		if err != nil {
@@ -156,6 +156,6 @@ func todoDelete(env *Env, w http.ResponseWriter, r *http.Request, id int) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, "/todos", MovedPermanently)
+		http.Redirect(w, r, "/todos", MovedTemporarily)
 	}
 }
