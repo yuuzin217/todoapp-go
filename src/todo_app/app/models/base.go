@@ -86,3 +86,8 @@ func createUUID() (uuidobj uuid.UUID) {
 	return uuidobj
 }
 
+// GetUUID はテスト用に公開された UUID 生成関数です
+func GetUUID() uuid.UUID {
+	return createUUID()
+}
+
