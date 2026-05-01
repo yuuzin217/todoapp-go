@@ -1,1 +1,2 @@
-# GO_CRUD
+# TodoApp-Go
+Simple Todo Application built with Go.
