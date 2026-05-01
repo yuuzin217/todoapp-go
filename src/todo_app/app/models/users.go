@@ -113,6 +113,24 @@ func GetUserByEmail(ctx context.Context, db *sql.DB, email string) (user User, e
 	return user, err
 }
 
+/*
+GetUserByEmailOrName は Eメールまたはユーザー名からユーザー情報を取得します。
+*/
+func GetUserByEmailOrName(ctx context.Context, db *sql.DB, identifier string) (user User, err error) {
+	user = User{}
+	cmd := `SELECT id, uuid, name, email, password, created_at
+	FROM users WHERE email = ? OR name = ?`
+	err = db.QueryRowContext(ctx, cmd, identifier, identifier).Scan(
+		&user.ID,
+		&user.UUID,
+		&user.Name,
+		&user.Email,
+		&user.Password,
+		&user.CreatedAt,
+	)
+	return user, err
+}
+
 // CreateSession はログインに成功したユーザーのために新しいセッションを発行してデータベースに保存します。
 func (u *User) CreateSession(ctx context.Context, db *sql.DB) (session Session, err error) {
 	session = Session{}

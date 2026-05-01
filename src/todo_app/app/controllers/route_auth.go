@@ -66,7 +66,7 @@ func authenticate(env *Env, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	user, err := models.GetUserByEmail(r.Context(), env.DB, r.PostFormValue("email"))
+	user, err := models.GetUserByEmailOrName(r.Context(), env.DB, r.PostFormValue("identifier"))
 	if err != nil {
 		log.Println(err)
 		http.Redirect(w, r, "/login", MovedPermanently)
