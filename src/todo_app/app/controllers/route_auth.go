@@ -15,7 +15,7 @@ func signup(env *Env, w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		_, err := env.checkSession(w, r)
 		if err != nil {
-			env.generateHTML(w, nil, "layout", "public_navbar", "signup")
+			env.generateHTML(w, r, nil, "layout", "public_navbar", "signup")
 		} else {
 			http.Redirect(w, r, "/todos", MovedPermanently)
 		}
@@ -49,7 +49,7 @@ login は ログインフォームを表示するハンドラーです。
 func login(env *Env, w http.ResponseWriter, r *http.Request) {
 	_, err := env.checkSession(w, r)
 	if err != nil {
-		env.generateHTML(w, nil, "layout", "public_navbar", "login")
+		env.generateHTML(w, r, nil, "layout", "public_navbar", "login")
 	} else {
 		http.Redirect(w, r, "/todos", MovedTemporarily)
 	}

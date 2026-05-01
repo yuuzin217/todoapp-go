@@ -12,7 +12,7 @@ func top(env *Env, w http.ResponseWriter, r *http.Request) {
 	_, err := env.checkSession(w, r)
 	if err != nil {
 		// top画面を生成
-		env.generateHTML(w, nil, "layout", "public_navbar", "top")
+		env.generateHTML(w, r, nil, "layout", "public_navbar", "top")
 	} else {
 		// todos画面にリダイレクト
 		http.Redirect(w, r, "/todos", MovedPermanently)
@@ -38,7 +38,7 @@ func index(env *Env, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		user.Todos = todos
-		env.generateHTML(w, user, "layout", "private_navbar", "index")
+		env.generateHTML(w, r, user, "layout", "private_navbar", "index")
 	}
 }
 
@@ -48,7 +48,7 @@ func todoNew(env *Env, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Redirect(w, r, "/login", MovedPermanently)
 	} else {
-		env.generateHTML(w, nil, "layout", "private_navbar", "todo_new")
+		env.generateHTML(w, r, nil, "layout", "private_navbar", "todo_new")
 	}
 }
 
@@ -99,7 +99,7 @@ func todoEdit(env *Env, w http.ResponseWriter, r *http.Request, id int) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		env.generateHTML(w, todo, "layout", "private_navbar", "todo_edit")
+		env.generateHTML(w, r, todo, "layout", "private_navbar", "todo_edit")
 	}
 
 }

@@ -34,6 +34,11 @@ func main() {
 		Mu:            sync.RWMutex{},
 	}
 
+	// 翻訳ファイルのロード
+	if err := env.LoadTranslations(); err != nil {
+		log.Println("Warning: Failed to load translations:", err)
+	}
+
 	// Webサーバーの起動
 	controllers.StartMainServer(env)
 }

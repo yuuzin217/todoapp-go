@@ -2,10 +2,13 @@ package controllers
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -15,25 +18,87 @@ import (
 )
 
 // Env はコントローラー層全体で共有される依存関係 (データベース接続や設定など) を保持する構造体です。
-// これにより、グローバル変数を使わずに各ハンドラーへ依存を注入(Dependency Injection)できます。
+// これにより、グローバル変数を使わずに各ハンドラーへ注入(Dependency Injection)できます。
 type Env struct {
 	DB            *sql.DB                       // データベースコネクション
 	Config        *config.ConfigList            // アプリケーション設定
 	TemplateCache map[string]*template.Template // テンプレートキャッシュ (本番用)
-	Mu            sync.RWMutex                  // キャッシュ操作用ミューテックス
+	Translations  map[string]map[string]string  // 言語ごとの翻訳データ
+	Mu            sync.RWMutex                  // キャッシュ/翻訳操作用ミューテックス
+}
+
+/*
+LoadTranslations は i18n ディレクトリから翻訳ファイルを読み込みます。
+*/
+func (env *Env) LoadTranslations() error {
+	env.Mu.Lock()
+	defer env.Mu.Unlock()
+
+	env.Translations = make(map[string]map[string]string)
+	i18nDir := "app/views/i18n"
+	files, err := os.ReadDir(i18nDir)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		if filepath.Ext(file.Name()) == ".json" {
+			lang := strings.TrimSuffix(file.Name(), ".json")
+			data, err := os.ReadFile(filepath.Join(i18nDir, file.Name()))
+			if err != nil {
+				return err
+			}
+
+			var trans map[string]string
+			if err := json.Unmarshal(data, &trans); err != nil {
+				return err
+			}
+			env.Translations[lang] = trans
+		}
+	}
+	return nil
+}
+
+/*
+getLang は リクエストから言語設定を取得します (Cookie > Accept-Language > Default)。
+*/
+func (env *Env) getLang(r *http.Request) string {
+	// 1. Cookieを確認
+	if cookie, err := r.Cookie("lang"); err == nil {
+		if _, ok := env.Translations[cookie.Value]; ok {
+			return cookie.Value
+		}
+	}
+
+	// 2. Accept-Language ヘッダーを確認
+	accept := r.Header.Get("Accept-Language")
+	if accept != "" {
+		langs := strings.Split(accept, ",")
+		for _, l := range langs {
+			tag := strings.Split(strings.TrimSpace(l), ";")[0]
+			if strings.HasPrefix(tag, "ja") {
+				return "ja"
+			}
+			if strings.HasPrefix(tag, "en") {
+				return "en"
+			}
+		}
+	}
+
+	return "en" // デフォルト
 }
 
 /*
 generateHTML は 指定されたテンプレートファイル群をパースしてHTMLを生成し、レスポンスとして書き込みます。
-本番環境 (production) ではキャッシュを使用し、開発環境 (development) では毎回パースを行います。
 */
-func (env *Env) generateHTML(w http.ResponseWriter, data interface{}, fileNames ...string) {
+func (env *Env) generateHTML(w http.ResponseWriter, r *http.Request, data interface{}, fileNames ...string) {
 	var files []string
 	for _, file := range fileNames {
 		files = append(files, fmt.Sprintf("app/views/templates/%s.html", file))
 	}
 
-	key := strings.Join(fileNames, ",")
+	lang := env.getLang(r)
+	key := strings.Join(fileNames, ",") + ":" + lang
 
 	// 本番環境かつキャッシュがある場合はキャッシュを使用
 	if env.Config.Env == "production" {
@@ -46,8 +111,25 @@ func (env *Env) generateHTML(w http.ResponseWriter, data interface{}, fileNames 
 		}
 	}
 
+	// 翻訳関数の定義
+	funcMap := template.FuncMap{
+		"TR": func(key string) string {
+			env.Mu.RLock()
+			defer env.Mu.RUnlock()
+			if trans, ok := env.Translations[lang]; ok {
+				if val, ok := trans[key]; ok {
+					return val
+				}
+			}
+			return key
+		},
+		"CurrentLang": func() string {
+			return lang
+		},
+	}
+
 	// テンプレートのパース
-	templates := template.Must(template.ParseFiles(files...))
+	templates := template.Must(template.New("").Funcs(funcMap).ParseFiles(files...))
 
 	// 本番環境の場合はキャッシュに保存
 	if env.Config.Env == "production" {
@@ -60,6 +142,29 @@ func (env *Env) generateHTML(w http.ResponseWriter, data interface{}, fileNames 
 	}
 
 	templates.ExecuteTemplate(w, "layout", data)
+}
+
+/*
+setLang は 言語設定をCookieに保存するハンドラーです。
+*/
+func setLang(env *Env, w http.ResponseWriter, r *http.Request) {
+	lang := r.URL.Query().Get("l")
+	if lang != "ja" && lang != "en" {
+		lang = "en"
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:  "lang",
+		Value: lang,
+		Path:  "/",
+	})
+
+	// 元のページに戻るか、トップへ
+	referer := r.Header.Get("Referer")
+	if referer == "" {
+		referer = "/"
+	}
+	http.Redirect(w, r, referer, http.StatusFound)
 }
 
 /*
@@ -135,5 +240,6 @@ func StartMainServer(env *Env) error {
 	http.HandleFunc("/todos/edit/", env.parseURL(todoEdit))
 	http.HandleFunc("/todos/update/", env.parseURL(todoUpdate))
 	http.HandleFunc("/todos/delete/", env.parseURL(todoDelete))
+	http.HandleFunc("/set-lang", makeHandler(env, setLang))
 	return http.ListenAndServe(":"+env.Config.Port, nil)
 }
