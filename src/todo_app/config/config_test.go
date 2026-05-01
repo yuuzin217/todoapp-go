@@ -5,8 +5,10 @@ import (
 	"testing"
 )
 
+// TestLoadConfig は設定ファイル (config.ini) および環境変数からの設定読み込みを検証します。
 func TestLoadConfig(t *testing.T) {
-	// 期待される config.ini を作成
+	// テスト用のダミー設定ファイルを作成します。
+	// テスト実行環境に依存せず、一貫した期待値でテストできるようにするためです。
 	content := []byte("[web]\nPort = 8888\nlogfile = test.log\nstatic = test_static\nenv = development\n\n[db]\ndriver = sqlite3\nname = test.sql")
 	err := os.WriteFile("config.ini", content, 0644)
 	if err != nil {
@@ -14,6 +16,7 @@ func TestLoadConfig(t *testing.T) {
 	}
 	defer os.Remove("config.ini")
 
+	// 環境変数が設定ファイルの設定を上書きできるか検証するため、一時的にセットします。
 	os.Setenv("GO_ENV", "test")
 	defer os.Unsetenv("GO_ENV")
 

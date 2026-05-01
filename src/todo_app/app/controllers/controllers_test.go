@@ -17,8 +17,10 @@ import (
 
 var testEnv *Env
 
+// TestMain は controllers パッケージ全体のテストの前処理と後処理を制御します。
+// インメモリの SQLite データベースをセットアップし、テストに必要な依存関係 (Env) を初期化します。
 func TestMain(m *testing.M) {
-	// テスト用DBセットアップ
+	// インメモリ DB を使用することで、ファイル I/O を排除しテストを高速化します。
 	db, _ := sql.Open("sqlite3", ":memory:")
 	models.CreateTables(db)
 
@@ -27,7 +29,7 @@ func TestMain(m *testing.M) {
 		Config: &config.ConfigList{Env: "development", Port: "8080", Static: "app/views"},
 	}
 
-	// 翻訳ファイルのロード (ダミーディレクトリ作成が必要)
+	// 翻訳ファイルのロード機能をテストするため、一時的なディレクトリ構造とダミーファイルを作成します。
 	os.MkdirAll("app/views/i18n", 0755)
 	os.WriteFile("app/views/i18n/en.json", []byte(`{"Welcome":"Welcome"}`), 0644)
 	os.WriteFile("app/views/i18n/ja.json", []byte(`{"Welcome":"ようこそ"}`), 0644)
@@ -35,15 +37,18 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
+	// テスト終了後は、作成した一時的なリソースをクリーンアップして副作用を防ぎます。
 	os.RemoveAll("app")
 	os.Exit(code)
 }
 
+// TestTop はルートパスへのアクセスをテストします。
+// 未ログイン時の紹介ページ表示と、ログイン時のタスク一覧へのリダイレクトの両方のパスを検証します。
 func TestTop(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 	rr := httptest.NewRecorder()
 	
-	// generateHTMLが実ファイルを探しに行くので、ディレクトリ構造が必要
+	// generateHTML は物理的なテンプレートファイルを探しに行くため、テスト用のダミーテンプレートを用意します。
 	os.MkdirAll("app/views/templates", 0755)
 	os.WriteFile("app/views/templates/layout.html", []byte(`{{define "layout"}}{{template "navbar" .}}{{template "content" .}}{{end}}`), 0644)
 	os.WriteFile("app/views/templates/public_navbar.html", []byte(`{{define "navbar"}}Navbar{{end}}`), 0644)
@@ -59,7 +64,7 @@ func TestTop(t *testing.T) {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
 	}
 
-	// Top (Logged in)
+	// ログイン済みユーザーがルートにアクセスした場合のリダイレクト処理を検証。
 	u := models.User{Name: "topuser", Email: "top@example.com", Password: "password"}
 	u.CreateUser(context.Background(), testEnv.DB)
 	user, _ := models.GetUserByEmail(context.Background(), testEnv.DB, u.Email)
@@ -73,8 +78,10 @@ func TestTop(t *testing.T) {
 	}
 }
 
+// TestGenerateHTMLCache は本番環境におけるテンプレートキャッシュ機能をテストします。
+// 2回目以降の呼び出しでパース処理がスキップされ、キャッシュが利用されるパスを通過させることを目的としています。
 func TestGenerateHTMLCache(t *testing.T) {
-	// Setup production env
+	// 一時的に本番環境設定を偽装します。
 	originalEnv := testEnv.Config.Env
 	testEnv.Config.Env = "production"
 	defer func() { testEnv.Config.Env = originalEnv }()
@@ -82,13 +89,13 @@ func TestGenerateHTMLCache(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/", nil)
 	rr := httptest.NewRecorder()
 	
-	// First call - should parse and cache
+	// 1回目の呼び出し: パースとキャッシュへの格納。
 	testEnv.generateHTML(rr, req, nil, "layout", "public_navbar", "top")
 	if rr.Code != http.StatusOK {
 		t.Errorf("First call failed: %d", rr.Code)
 	}
 
-	// Second call - should use cache
+	// 2回目の呼び出し: キャッシュからの取得。
 	rr2 := httptest.NewRecorder()
 	testEnv.generateHTML(rr2, req, nil, "layout", "public_navbar", "top")
 	if rr2.Code != http.StatusOK {
@@ -96,8 +103,9 @@ func TestGenerateHTMLCache(t *testing.T) {
 	}
 }
 
+// TestSignup は新規ユーザー登録処理をテストします。
 func TestSignup(t *testing.T) {
-	// Signup GET
+	// GET リクエストによるフォーム表示。
 	req, _ := http.NewRequest("GET", "/signup", nil)
 	rr := httptest.NewRecorder()
 	os.WriteFile("app/views/templates/signup.html", []byte(`{{define "content"}}Signup{{end}}`), 0644)
@@ -107,7 +115,7 @@ func TestSignup(t *testing.T) {
 		t.Errorf("Signup GET failed: %d", rr.Code)
 	}
 
-	// Signup GET (Logged in)
+	// ログイン済みユーザーが登録画面へアクセスした場合のリダイレクトを検証。
 	u := models.User{Name: "signupuser", Email: "signup@example.com", Password: "password"}
 	u.CreateUser(context.Background(), testEnv.DB)
 	user, _ := models.GetUserByEmail(context.Background(), testEnv.DB, u.Email)
@@ -120,7 +128,7 @@ func TestSignup(t *testing.T) {
 		t.Errorf("Signup logged in should redirect, got %d", rr.Code)
 	}
 
-	// Signup POST
+	// POST リクエストによる新規登録と、登録後の自動ログイン (クッキーセット) を検証。
 	data := "name=newuser&email=new@example.com&password=password"
 	req, _ = http.NewRequest("POST", "/signup", strings.NewReader(data))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -131,18 +139,18 @@ func TestSignup(t *testing.T) {
 		t.Errorf("Signup POST failed: %d", rr.Code)
 	}
 	
-	// Check if user is created and session cookie is set
 	if cookie := rr.Result().Cookies(); len(cookie) == 0 || cookie[0].Name != "_cookie" {
 		t.Error("Signup POST did not set session cookie")
 	}
 }
 
+// TestAuthenticate はログイン認証処理をテストします。
 func TestAuthenticate(t *testing.T) {
-	// Pre-create user
+	// 認証対象のユーザーをあらかじめ作成。
 	u := models.User{Name: "authuser", Email: "auth@example.com", Password: "password"}
 	u.CreateUser(context.Background(), testEnv.DB)
 
-	// Authenticate Success
+	// 正しい資格情報での認証成功。
 	data := "identifier=auth@example.com&password=password"
 	req, _ := http.NewRequest("POST", "/authenticate", strings.NewReader(data))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -153,14 +161,14 @@ func TestAuthenticate(t *testing.T) {
 		t.Errorf("Authenticate success should redirect, got %d", rr.Code)
 	}
 
-	// Authenticate Failure
+	// 誤ったパスワードによる認証失敗と、ログイン画面への差し戻しを検証。
 	data = "identifier=auth@example.com&password=wrong"
 	req, _ = http.NewRequest("POST", "/authenticate", strings.NewReader(data))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr = httptest.NewRecorder()
 	
 	authenticate(testEnv, rr, req)
-	if rr.Code != http.StatusFound { // Redirects back to /login
+	if rr.Code != http.StatusFound {
 		location := rr.Header().Get("Location")
 		if location != "/login" {
 			t.Errorf("Authenticate failure should redirect to /login, got %s", location)
@@ -168,15 +176,16 @@ func TestAuthenticate(t *testing.T) {
 	}
 }
 
+// TestTodoFlow は TODO の作成、表示、編集、削除の一連の流れ (CRUD) をテストします。
 func TestTodoFlow(t *testing.T) {
-	// 1. Setup User and Session
+	// 1. テストユーザーとセッションの準備
 	u := models.User{Name: "todouser", Email: "todo@example.com", Password: "password"}
 	u.CreateUser(context.Background(), testEnv.DB)
 	user, _ := models.GetUserByEmail(context.Background(), testEnv.DB, u.Email)
 	session, _ := user.CreateSession(context.Background(), testEnv.DB)
 	cookie := &http.Cookie{Name: "_cookie", Value: session.UUID}
 
-	// 2. Index (GET /todos)
+	// 2. TODO 一覧表示 (index)
 	req, _ := http.NewRequest("GET", "/todos", nil)
 	req.AddCookie(cookie)
 	rr := httptest.NewRecorder()
@@ -188,7 +197,7 @@ func TestTodoFlow(t *testing.T) {
 		t.Errorf("Index failed: %d", rr.Code)
 	}
 
-	// 3. New (GET /todos/new)
+	// 3. 新規作成フォーム表示 (todoNew)
 	req, _ = http.NewRequest("GET", "/todos/new", nil)
 	req.AddCookie(cookie)
 	rr = httptest.NewRecorder()
@@ -198,7 +207,7 @@ func TestTodoFlow(t *testing.T) {
 		t.Errorf("TodoNew failed: %d", rr.Code)
 	}
 
-	// 4. Save (POST /todos/save)
+	// 4. TODO の保存 (todoSave)
 	data := "content=TestTask"
 	req, _ = http.NewRequest("POST", "/todos/save", strings.NewReader(data))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -209,7 +218,7 @@ func TestTodoFlow(t *testing.T) {
 		t.Errorf("TodoSave failed: %d", rr.Code)
 	}
 
-	// 5. Edit (GET /todos/edit/1)
+	// 5. 編集フォーム表示 (todoEdit)
 	todos, _ := user.GetTodosByUser(context.Background(), testEnv.DB)
 	todoID := todos[0].ID
 	req, _ = http.NewRequest("GET", fmt.Sprintf("/todos/edit/%d", todoID), nil)
@@ -221,7 +230,7 @@ func TestTodoFlow(t *testing.T) {
 		t.Errorf("TodoEdit failed: %d", rr.Code)
 	}
 
-	// 6. Update (POST /todos/update/1)
+	// 6. TODO の更新 (todoUpdate)
 	data = "content=UpdatedTask"
 	req, _ = http.NewRequest("POST", fmt.Sprintf("/todos/update/%d", todoID), strings.NewReader(data))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -232,7 +241,7 @@ func TestTodoFlow(t *testing.T) {
 		t.Errorf("TodoUpdate failed: %d", rr.Code)
 	}
 
-	// 7. Delete (GET /todos/delete/1)
+	// 7. TODO の削除 (todoDelete)
 	req, _ = http.NewRequest("GET", fmt.Sprintf("/todos/delete/%d", todoID), nil)
 	req.AddCookie(cookie)
 	rr = httptest.NewRecorder()
@@ -242,8 +251,9 @@ func TestTodoFlow(t *testing.T) {
 	}
 }
 
+// TestI18n は多言語対応機能をテストします。
 func TestI18n(t *testing.T) {
-	// Test setLang
+	// 言語設定の変更 (set-lang) を検証。
 	req, _ := http.NewRequest("GET", "/set-lang?l=ja", nil)
 	rr := httptest.NewRecorder()
 	setLang(testEnv, rr, req)
@@ -251,7 +261,7 @@ func TestI18n(t *testing.T) {
 		t.Errorf("setLang failed to set cookie to ja, got %v", cookie)
 	}
 
-	// Test getLang with Cookie
+	// クッキーに基づく言語判定を検証。
 	req, _ = http.NewRequest("GET", "/", nil)
 	req.AddCookie(&http.Cookie{Name: "lang", Value: "ja"})
 	lang := testEnv.getLang(req)
@@ -259,7 +269,7 @@ func TestI18n(t *testing.T) {
 		t.Errorf("getLang with cookie failed: expected ja, got %s", lang)
 	}
 
-	// Test getLang with Header
+	// Accept-Language ヘッダーに基づく言語判定を検証。
 	req, _ = http.NewRequest("GET", "/", nil)
 	req.Header.Set("Accept-Language", "ja,en-US;q=0.9,en;q=0.8")
 	lang = testEnv.getLang(req)
@@ -268,14 +278,14 @@ func TestI18n(t *testing.T) {
 	}
 }
 
+// TestLogout はログアウト処理をテストします。
 func TestLogout(t *testing.T) {
-	// Setup user and session
+	// セッションが存在する場合のログアウトと、クッキーの無効化を検証。
 	u := models.User{Name: "logoutuser", Email: "logout@example.com", Password: "password"}
 	u.CreateUser(context.Background(), testEnv.DB)
 	user, _ := models.GetUserByEmail(context.Background(), testEnv.DB, u.Email)
 	session, _ := user.CreateSession(context.Background(), testEnv.DB)
 	
-	// Logout with session
 	req, _ := http.NewRequest("GET", "/logout", nil)
 	req.AddCookie(&http.Cookie{Name: "_cookie", Value: session.UUID})
 	rr := httptest.NewRecorder()
@@ -285,13 +295,13 @@ func TestLogout(t *testing.T) {
 		t.Errorf("Logout with session failed: %d", rr.Code)
 	}
 	
-	// Check if session is deleted
+	// セッションが実際に DB から削除されたことを確認。
 	valid, _ := session.CheckSession(context.Background(), testEnv.DB)
 	if valid {
 		t.Error("Session should be invalid after logout")
 	}
 
-	// Logout without session
+	// すでにログアウトしている状態で再度ログアウトを試みた場合の安全性を検証。
 	req, _ = http.NewRequest("GET", "/logout", nil)
 	rr = httptest.NewRecorder()
 	logout(testEnv, rr, req)
